@@ -1,0 +1,51 @@
+import pandas as pd
+
+date = "2024-11-20"
+
+threshold = 100
+
+
+filename = 'Performance_Return_11.20'
+pathway_insert = fr'C:\Users\matthewray\OneDrive - Clearwater\Desktop\Python\PayPal Data\Input\{filename}.csv'
+
+df = pd.read_csv(pathway_insert)
+
+
+df = df[['Identifier','Account ID', 'Period Begin', 'Return', 'Performance Numerator', 'Net Amortization/Accretion Income', 'Change In Net Unrealized Gain/Loss', 'Interest/Dividend Income' ]]
+
+# Convert the "Interest/Dividend Income" to float
+df['Interest/Dividend Income'] = df['Interest/Dividend Income'].replace(',', '', regex=True).astype(float)
+df['Return'] = df['Return'].astype(float)
+
+df = df.sort_values(by='Identifier')
+
+
+def mark_outliers(group):
+    Q1 = group['Interest/Dividend Income'].quantile(0.25)
+    Q3 = group['Interest/Dividend Income'].quantile(0.75)
+    IQR = Q3 - Q1
+
+    lower_bound = Q1 - threshold * IQR
+    upper_bound = Q3 + threshold * IQR
+
+    group['abnormal'] = ['Yes' if (x < (Q1 - threshold * IQR)) or (x > (Q3 + threshold * IQR)) else 'No' 
+                         for x in group['Interest/Dividend Income']]
+
+    group['Difference'] = Q3 - group['Interest/Dividend Income']
+    group['Q1'] = Q1
+    group['Q3'] = Q3
+    group['lower_bound'] = lower_bound
+    group['upper_bound'] = upper_bound
+    group['IQR'] = IQR
+
+    
+    return group
+
+df = df.groupby(['Identifier', 'Account ID']).apply(mark_outliers)
+
+df['Difference'] = df['Difference'].abs()
+df = df[(df['Difference'] > 50000) | (df['Return'].abs() > .8)]
+
+df = df[df['abnormal'] == 'Yes']
+
+df.to_csv(fr'C:\Users\matthewray\OneDrive - Clearwater\Desktop\Python\PayPal Data\Output\Output_{date}_2.csv')
