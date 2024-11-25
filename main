@@ -1,11 +1,13 @@
 import pandas as pd
+from datetime import datetime
 
-date = "2024-11-20"
+date = datetime.today().date()
 
-threshold = 100
+threshold = 7
+diff_threshold = 20000
 
 
-filename = 'Performance_Return_11.20'
+filename = 'Performance_Return_11.25'
 pathway_insert = fr'C:\Users\matthewray\OneDrive - Clearwater\Desktop\Python\PayPal Data\Input\{filename}.csv'
 
 df = pd.read_csv(pathway_insert)
@@ -44,8 +46,20 @@ def mark_outliers(group):
 df = df.groupby(['Identifier', 'Account ID']).apply(mark_outliers)
 
 df['Difference'] = df['Difference'].abs()
-df = df[(df['Difference'] > 50000) | (df['Return'].abs() > .8)]
 
-df = df[df['abnormal'] == 'Yes']
 
-df.to_csv(fr'C:\Users\matthewray\OneDrive - Clearwater\Desktop\Python\PayPal Data\Output\Output_{date}_2.csv')
+# Apply the filter only if IQR is 0
+df_iqr_zero = df[df['IQR'] == 0]
+df_not_iqr_zero = df[df['IQR'] != 0]
+
+# Apply filter for rows where IQR is 0
+df_iqr_zero = df_iqr_zero[(df_iqr_zero['Difference'] > diff_threshold) | (df_iqr_zero['Return'].abs() > .8)]
+
+# Combine both DataFrames
+df = pd.concat([df_iqr_zero, df_not_iqr_zero])
+
+
+#df = df[df['abnormal'] == 'Yes']
+
+df.to_excel(fr'C:\Users\matthewray\OneDrive - Clearwater\Desktop\Python\PayPal Data\Output\Output_{date}_test.xlsx')
+
