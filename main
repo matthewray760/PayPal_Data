@@ -1,5 +1,7 @@
 import pandas as pd
 from datetime import datetime
+import openpyxl
+import xlsxwriter
 
 date = datetime.today().date()
 
@@ -58,8 +60,37 @@ df_iqr_zero = df_iqr_zero[(df_iqr_zero['Difference'] > diff_threshold) | (df_iqr
 # Combine both DataFrames
 df = pd.concat([df_iqr_zero, df_not_iqr_zero])
 
+#Account_Code_Key
+df['ID_Account'] = df['Account ID'].astype(str) + "-" + df['Identifier']
 
-#df = df[df['abnormal'] == 'Yes']
+df_yes = df.copy()
 
-df.to_excel(fr'C:\Users\matthewray\OneDrive - Clearwater\Desktop\Python\PayPal Data\Output\Output_{date}_test.xlsx')
+df_yes = df_yes[df_yes['Interest/Dividend Income'] != 0]
+df_yes = df_yes[df_yes['Difference'] > diff_threshold]
+
+pathway_output = fr'C:\Users\matthewray\OneDrive - Clearwater\Desktop\Python\PayPal Data\Output\Output_{date}.xlsx'
+
+df.to_excel(pathway_output, sheet_name = 'Summary', index = False)
+
+writer = pd.ExcelWriter(pathway_output, engine='openpyxl', mode = 'a')
+
+df_yes.to_excel(writer, sheet_name= 'Abnormal', index = False)
+
+for sheet_name in writer.sheets:
+            worksheet = writer.sheets[sheet_name]
+            for column_cells in worksheet.columns:
+                max_length = 0
+                column = column_cells[0].column_letter
+                for cell in column_cells:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(cell.value)
+                    except:
+                        pass
+                adjusted_width = (max_length + 6)
+                worksheet.column_dimensions[column].width = adjusted_width
+print("Python: Executed successfully. Output file created")
+writer.save()
+
+
 
